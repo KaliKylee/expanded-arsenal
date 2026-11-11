@@ -616,15 +616,11 @@ public:
 	void EXPORT SwingAgain( void );
 	void EXPORT Smack( void );
 	int GetItemInfo( ItemInfo *p );
-	int AddToPlayer( CBasePlayer *pPlayer );
 
 	void PrimaryAttack( void );
 	int Swing( int fFirst );
 	BOOL Deploy( void );
 	void Holster( int skiplocal = 0 );
-#if CROWBAR_IDLE_ANIM
-	void WeaponIdle();
-#endif
 	int m_iSwing;
 	TraceResult m_trHit;
 
