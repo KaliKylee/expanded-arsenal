@@ -1,0 +1,65 @@
+name: Build launcher + mod libs
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install NDK and CMake
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;26.1.10909125" "cmake;3.22.1"
+
+      # Gradle runs CMake through the NDK: it builds libserver/libclient (the mod DLLs)
+      # for every ABI and packs them, together with the launcher, into the APK.
+      - name: Build launcher + libs
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug
+
+      - name: Collect outputs
+        run: |
+          mkdir -p dist/libs
+          APK=$(ls android/app/build/outputs/apk/debug/*.apk | head -n1)
+          cp "$APK" dist/HL-Expanded-Arsenal-launcher.apk
+          unzip -o -q "$APK" 'lib/*' -d dist/libs
+          echo "Libraries inside the APK:"
+          find dist/libs -name '*.so' | sort
+          test "$(find dist/libs -name '*.so' | wc -l)" -ge 2 || { echo "No mod libraries were built"; exit 1; }
+          (cd dist/libs && zip -r -q ../hl_expanded_arsenal-libs.zip lib)
+
+      - name: Upload launcher APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: launcher-apk
+          path: dist/HL-Expanded-Arsenal-launcher.apk
+
+      - name: Upload mod libs (per ABI)
+        uses: actions/upload-artifact@v4
+        with:
+          name: mod-libs
+          path: dist/hl_expanded_arsenal-libs.zip
+
+      - name: Publish release (tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/HL-Expanded-Arsenal-launcher.apk
+            dist/hl_expanded_arsenal-libs.zip
