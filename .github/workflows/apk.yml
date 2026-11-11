@@ -15,6 +15,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # FreeVGUI e baixado aqui (commit fixo), entao a pasta freevgui do repo nao importa.
+      - name: Fetch FreeVGUI
+        run: |
+          rm -rf freevgui
+          mkdir freevgui
+          cd freevgui
+          git init -q
+          git remote add origin https://github.com/FWGS/freevgui.git
+          git fetch -q --depth 1 origin 73bfb4659f3d9eb28b79e5b26baea8c6b888d5eb
+          git checkout -q FETCH_HEAD
+          rm -rf .git
+          test -f CMakeLists.txt
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
